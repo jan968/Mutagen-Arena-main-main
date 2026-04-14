@@ -1,0 +1,12 @@
+{
+  "name": "mutagen-arena-mmorpg",
+  "version": "1.0.0",
+  "description": "A text-based Battle Arena MMORPG",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

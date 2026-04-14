@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Text Battle Arena</title>
+  <meta name="description"
+    content="A browser-based text battle game with probabilistic combat, dynamic narratives, and Elo-based matchmaking.">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="game-header">
+      <h1 class="game-title">⚔️ Text Battle Arena</h1>
+      <p class="game-subtitle">Prove your worth in the arena</p>
+      <!-- Coins display -->
+      <div class="coins-display" id="coinsDisplay">
+        <span class="coins-icon">🪙</span>
+        <span class="coins-value" id="coinsValue">20</span>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="game-main">
+      <!-- Player Stats Panel -->
+      <section class="panel stats-panel" id="statsPanel">
+        <h2 class="panel-title">
+          <span class="panel-icon">📊</span> Fighter Profile
+          <span class="class-badge" id="classBadge">Warrior</span>
+        </h2>
+        <div class="profile-avatar-container">
+          <div class="fighter-avatar" id="playerAvatarProfile"></div>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span class="stat-label">ELO Rating</span>
+            <span class="stat-value" id="eloValue">1000</span>
+            <span class="stat-trend" id="eloTrend"></span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Win Rate</span>
+            <span class="stat-value" id="winRateValue">0%</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Total Battles</span>
+            <span class="stat-value" id="totalBattlesValue">0</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Wins</span>
+            <span class="stat-value stat-wins" id="winsValue">0</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Losses</span>
+            <span class="stat-value stat-losses" id="lossesValue">0</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Win Streak</span>
+            <span class="stat-value stat-streak" id="streakValue">0</span>
+          </div>
+        </div>
+        <!-- Hidden stats bar -->
+        <div class="hidden-stats">
+          <div class="hidden-stat">
+            <span class="hidden-stat-label">💚 HP</span>
+            <div class="hidden-stat-bar-bg">
+              <div class="hidden-stat-bar-fill hp-fill" id="hpBar" style="width: 100%;"></div>
+            </div>
+            <span class="hidden-stat-val" id="hpValue">100/100</span>
+          </div>
+          <div class="hidden-stat">
+            <span class="hidden-stat-label">💪 STR</span>
+            <div class="hidden-stat-bar-bg">
+              <div class="hidden-stat-bar-fill str-fill" id="strBar"></div>
+            </div>
+            <span class="hidden-stat-val" id="strValue">50</span>
+          </div>
+          <div class="hidden-stat">
+            <span class="hidden-stat-label">⚡ AGI</span>
+            <div class="hidden-stat-bar-bg">
+              <div class="hidden-stat-bar-fill agi-fill" id="agiBar"></div>
+            </div>
+            <span class="hidden-stat-val" id="agiValue">50</span>
+          </div>
+          <div class="hidden-stat">
+            <span class="hidden-stat-label">🧠 INT</span>
+            <div class="hidden-stat-bar-bg">
+              <div class="hidden-stat-bar-fill int-fill" id="intBar"></div>
+            </div>
+            <span class="hidden-stat-val" id="intValue">50</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Mutations Panel -->
+      <section class="panel mutations-panel" id="mutationsPanel">
+        <h2 class="panel-title">
+          <span class="panel-icon">🧬</span> Mutations
+          <span class="mutation-count" id="mutationCount">0/5</span>
+        </h2>
+        <div class="mutations-list" id="mutationsList">
+          <div class="log-empty">No mutations yet. Win battles to evolve!</div>
+        </div>
+      </section>
+
+      <!-- Battle Overlay (shown during 10s fight sequence) -->
+      <section class="panel battle-overlay hidden" id="battleOverlay">
+        <div class="battle-intro-overlay hidden" id="battleIntro">
+          <div class="battle-intro-text">VS</div>
+        </div>
+
+        <div class="battle-overlay-header">
+          <span class="battle-overlay-icon">⚔️</span>
+          <span class="battle-overlay-title">BATTLE IN PROGRESS</span>
+        </div>
+
+        <!-- Fighter Arena -->
+        <div class="fighter-arena" id="fighterArena">
+          <!-- Player (left) -->
+          <div class="fighter fighter-player" id="fighterPlayer">
+            <div class="fighter-name">You</div>
+            <div class="fighter-bar-wrapper">
+              <div class="fighter-hp-bar">
+                <div class="fighter-hp-chip" id="playerHpChip"></div>
+                <div class="fighter-hp-fill" id="playerHpBar"></div>
+                <div class="fighter-es-fill" id="playerEsBar" style="width:0%"></div>
+              </div>
+              <span class="bar-label-es" id="playerEsText"></span>
+              <span class="bar-label-hp" id="playerHpText"></span>
+            </div>
+            <div class="fighter-avatar" id="playerAvatar"></div>
+             <div class="shadow"></div>
+          </div>
+
+          <!-- VS spark -->
+          <div class="arena-vs">⚡</div>
+
+          <!-- Enemy (right) -->
+<div class="fighter fighter-enemy" id="fighterEnemy">
+            <div class="fighter-name" id="enemyNameLabel">Enemy</div>
+            <div class="fighter-bar-wrapper">
+              <div class="fighter-hp-bar">
+                <div class="fighter-es-fill" id="enemyEsBar" style="width:0%"></div>
+                <div class="fighter-hp-chip" id="enemyHpChip"></div>
+                <div class="fighter-hp-fill" id="enemyHpBar"></div>
+              </div>
+              <span class="bar-label-es" id="enemyEsText"></span>
+              <span class="bar-label-hp" id="enemyHpText"></span>
+            </div>
+            
+            <div class="fighter-avatar" id="enemyAvatar"></div>
+             <div class="shadow"></div>
+          </div>
+        </div>
+
+        <div style="display: none;" class="battle-live-text" id="battleLiveText">Entering the arena...</div>
+        <div class="battle-progress-bar" style="display: none;">
+          <div class="battle-progress-fill" id="battleProgressFill"></div>
+        </div>
+      </section>
+
+      <!-- Battle Result Display -->
+      <section class="panel result-panel hidden" id="resultPanel">
+        <div class="result-banner" id="resultBanner">
+          <span class="result-icon" id="resultIcon"></span>
+          <span class="result-text" id="resultText"></span>
+        </div>
+        <div class="narrative-box" id="narrativeBox"></div>
+        <!-- Mutation alert (shown when mutation triggers) -->
+        <div class="mutation-alert hidden" id="mutationAlert"></div>
+        <div class="battle-details" id="battleDetails"></div>
+      </section>
+
+      <!-- Cooldown Panel -->
+      <section class="panel cooldown-panel hidden" id="cooldownPanel">
+        <div class="cooldown-content">
+          <div class="cooldown-timer-ring">
+            <svg class="cooldown-svg" viewBox="0 0 100 100">
+              <circle class="cooldown-track" cx="50" cy="50" r="42" />
+              <circle class="cooldown-progress" id="cooldownCircle" cx="50" cy="50" r="42" />
+            </svg>
+            <span class="cooldown-seconds" id="cooldownSeconds">60</span>
+          </div>
+          <div class="cooldown-label">Next battle available in</div>
+        </div>
+        <button class="btn btn-skip" id="btnSkip" onclick="skipCooldown()">
+          <span class="btn-icon">⚡</span> Skip Cooldown
+          <span class="skip-cost">(15 🪙)</span>
+        </button>
+      </section>
+
+      <!-- Battle Log -->
+      <section class="panel log-panel" id="logPanel">
+        <h2 class="panel-title">
+          <span class="panel-icon">📜</span> Battle Log
+        </h2>
+        <div class="log-entries" id="logEntries">
+          <div class="log-empty">No battles fought yet. Enter the arena!</div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Action Buttons -->
+    <footer class="action-bar">
+      <button class="btn btn-battle" id="btnBattle" onclick="startBattle()">
+        <span class="btn-icon">⚔️</span> Fight!
+      </button>
+      <button class="btn btn-train" id="btnTrain" onclick="trainPlayer()">
+        <span class="btn-icon">🏋️</span> Train
+      </button>
+      <button class="btn btn-reset" id="btnReset" onclick="resetGame()">
+        <span class="btn-icon">🔄</span> Reset
+      </button>
+    </footer>
+  </div>
+
+<script src="utils/math.js"></script>
+<script src="utils/random.js"></script>
+<script src="mutations/MutationBase.js"></script>
+<script src="mutations/common.js"></script>
+<script src="mutations/rare.js"></script>
+<script src="mutations/epic.js"></script>
+<script src="mutations/legendary.js"></script>
+<script src="mutations/index.js"></script>
+<script src="engine/Fighter.js"></script>
+<script src="engine/BattleState.js"></script>
+<script src="engine/BattleEngine.js"></script>
+<script src="narrative.js"></script>
+<script src="ui/bars.js"></script>
+<script src="ui/statsUI.js"></script>
+<script src="ui/battleLog.js"></script>
+<script src="ui/resultScreen.js"></script>
+<script src="playback/playBattleSequence.js"></script>
+<script src="battle/generateOpponent.js"></script>
+<script src="battle/startBattle.js"></script>
+<script src="player/playerState.js"></script>
+<script src="player/progression.js"></script>
+<script src="vfx.js"></script>
+<script src="app.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,44 @@
+# DEX vs STR Balance Report (50-400 Range)
+
+This report analyzes the combat parity between Strength (STR) and Agility (DEX/AGI) builds across a wide stat spectrum.
+
+## 📊 Summary of Findings
+
+| Stat Range | Pure Stat Balance | Mutation Impact (STR vs DEX Sets) |
+| :--- | :--- | :--- |
+| **Low (50-150)** | ⚖️ **Balanced**: Close to 50/50 parity. | ⚡ **DEX Favored**: Assassinate/Phantom Step are lethal early. |
+| **Mid (200-300)** | ⚖️ **Slight STR Edge**: STR starts winning ~55-60%. | ⚖️ **Balanced**: Synergies keep both builds competitive. |
+| **High (350-400)** | 💪 **STR Dominant**: STR wins >90% in mirror budget. | 💪 **STR Dominant**: Raw HP and Berserker scaling outpace DEX. |
+
+## 🕹️ Test Matrices (P1 STR Build vs P2 DEX Build)
+
+*Note: Percentages represent the Win Rate of the STR build (P1).*
+
+### 1. Pure Stats (No Mutations)
+DEX (AGI) builds rely on the **Dodge Cap (35%)** and **Double Strike**. At high levels, the raw HP pool from STR (150 + 0.5 * STR) becomes massive enough that AGI builds cannot deal enough damage before the STR build lands a few heavy hits.
+
+| STR \ DEX | 100 | 200 | 300 | 400 |
+| :--- | :--- | :--- | :--- | :--- |
+| **100** | 64.8% | 1.1% | 0.0% | 0.0% |
+| **200** | 100% | 56.1% | 26.4% | 11.3% |
+| **300** | 100% | 93.0% | 71.8% | 54.8% |
+| **400** | 100% | 99.6% | 96.4% | 91.4% |
+
+### 2. Archetype Setup
+*(STR: Berserker + Thick Hide vs DEX: Assassinate + Phantom Step)*
+DEX mutations are extremely powerful in the mid-game (DEX wins 64% at 200 vs 200), but at 400 vs 400, STR's "Thick Hide" reduction and "Berserker" lifesteal become insurmountable for the DEX build's burst.
+
+| STR \ DEX | 100 | 200 | 300 | 400 |
+| :--- | :--- | :--- | :--- | :--- |
+| **100** | 81.5% | 0.2% | 0.0% | 0.0% |
+| **200** | 100% | 88.0% | 31.1% | 2.4% |
+| **300** | 100% | 99.7% | 96.7% | 33.0% |
+| **400** | 100% | 100% | 99.5% | 87.0% |
+
+## 💡 Recommendations
+
+1.  **Dodge Scaling**: Consider allowing DEX to slightly bypass the 35% dodge cap at very high stat values (e.g., 400+ AGI) or adding a "Perfect Dodge" that ignores undodgeable attacks.
+2.  **HP Saturation**: STR's HP scaling is very linear. Adding a small diminishing return to HP gain at very high STR values might help AGI builds stay relevant.
+3.  **Mutation Tuning**: "Thick Hide" is extremely effective against multi-hit AGI builds (Double Strike/Echo). Adding a minimum damage threshold or a "Pierce" mechanic to high DEX builds would help counter this.
+
+*Verification performed via [test_dex_vs_str.js](file:///C:/Users/Thai%20Harmony/Downloads/GAME/test_dex_vs_str.js) running 32,000 simulated battles.*

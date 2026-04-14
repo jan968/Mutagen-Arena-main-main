@@ -1,0 +1,314 @@
+const fs = require('fs');
+const path = require('path');
+
+// ==========================================
+// MATH UTILITIES
+// ==========================================
+function clamp(val, min, max) { return Math.max(min, Math.min(max, val)); }
+
+// ==========================================
+// MUTATION SYSTEM (headless copy from bot.js)
+// ==========================================
+class Mutation {
+  constructor(name, rarity, description) {
+    this.name = name;
+    this.rarity = rarity;
+    this.description = description;
+  }
+  getScalingValue(owner) {
+    const MAX_STAT = 545;
+    return {
+      str: Math.min(owner.str / MAX_STAT, 1),
+      agi: Math.min(owner.agi / MAX_STAT, 1),
+      hp: Math.min(owner.currentHP / owner.maxHP, 1),
+    };
+  }
+  onBattleStart() {}
+  onTurnStart() {}
+  onBeforeAttack() {}
+  onAfterAttack() {}
+  onBeforeDamage() {}
+  onAfterDamage() {}
+  onBeforeHeal() {}
+  onTurnEnd() {}
+}
+
+class Bloodletting extends Mutation {
+  constructor() { super('Bloodletting', 'Common', ''); this.scaling = { str: 0.7, agi: 1.0, hp: 0 }; }
+  onAfterDamage(_state, owner, opponent, damageContext) {
+    if (damageContext.attacker !== owner || damageContext.isEcho || damageContext.finalDamage <= 0 || damageContext.isDodged || damageContext.prevented) return;
+    const { str, agi } = this.getScalingValue(owner);
+    const procChance = 0.40 + (agi * this.scaling.agi * 0.55);
+    if (Math.random() > procChance) return;
+    const bleedValue = Math.max(1, Math.floor(Math.sqrt(opponent.maxHP) * 0.15 * (1 + str * this.scaling.str)));
+    const stackCap = agi >= 0.70 ? 3 : 2;
+    const ownStacks = opponent.statusEffects.filter(ef => ef.name === 'Bleed' && ef.source === owner.name);
+    if (ownStacks.length < stackCap) {
+      opponent.statusEffects.push({ name: 'Bleed', value: bleedValue, duration: Math.floor(3 + (agi * 2)), source: owner.name });
+    }
+  }
+}
+
+class QuickReflex extends Mutation {
+  constructor() { super('Quick Reflex', 'Common', ''); }
+  onBeforeDamage(state, owner, opponent, damageContext) {
+    if (damageContext.defender === owner && !damageContext.isDodged && !damageContext.prevented) {
+      const baseDodge = clamp(0.1 + Math.pow(owner.agi / opponent.agi, 1.2) * 0.1, 0.05, 0.45);
+      const newDodge = clamp(baseDodge + 0.10, 0.05, 0.45);
+      if (Math.random() < ((newDodge - baseDodge) / (1 - baseDodge))) {
+        damageContext.isDodged = true;
+        damageContext.prevented = true;
+      }
+    }
+  }
+}
+
+class ThickHide extends Mutation {
+  constructor() { super('Thick Hide', 'Epic', ''); this.baseReduction = 2; this.maxReduction = 27; }
+  onBeforeDamage(state, owner, opponent, damageContext) {
+    if (damageContext.defender !== owner || damageContext.isDodged || damageContext.prevented) return;
+    const bypass = ['BLEED', 'BLEED_TICK', 'CORROSIVE', 'TRUE_DAMAGE', 'THORN_REFLECT'];
+    if (bypass.includes(damageContext.type) || damageContext.isAssassinate) return;
+    const reduction = Math.floor(this.baseReduction + (this.maxReduction - this.baseReduction) * (owner.str / 545));
+    damageContext.finalDamage = Math.max(1, damageContext.finalDamage - reduction);
+  }
+}
+
+class PhantomStep extends Mutation {
+  constructor() { super('Phantom Step', 'Rare', ''); this.baseDamageMulti = 0.40; this.maxDamageMulti = 0.90; }
+  onAfterAttack(state, owner, opponent, attackContext) {
+    if (attackContext.defender !== owner || !attackContext.isDodged || owner.currentHP <= 0 || opponent.currentHP <= 0) return;
+    const damageMulti = this.baseDamageMulti + (this.maxDamageMulti - this.baseDamageMulti) * (owner.agi / 545);
+    state.engine.performAttack(owner, opponent, { isPhantomStep: true, damageMultiplier: damageMulti, isEcho: true });
+  }
+}
+
+class Assassinate extends Mutation {
+  constructor() { super('Assassinate', 'Legendary', ''); }
+  onBattleStart(state, owner) { owner.flags = { timeWarpCharges: 0 }; }
+  onAfterAttack(state, owner, opponent, attackContext) {
+    if (attackContext.attacker !== owner || attackContext.isAssassinate || opponent.currentHP <= 0 || owner.currentHP <= 0) return;
+    const normAgi = Math.min(owner.agi / 545, 1);
+    owner.flags.timeWarpCharges += (1 + Math.floor(normAgi * 1.5));
+    while (owner.flags.timeWarpCharges >= 6) {
+      owner.flags.timeWarpCharges -= 6;
+      state.engine.performAttack(owner, opponent, { isAssassinate: true });
+      if (opponent.currentHP <= 0) break;
+    }
+  }
+  onBeforeAttack(state, owner, opponent, attackContext) {
+    if (attackContext.isAssassinate) {
+      attackContext.damageMultiplier = (attackContext.damageMultiplier || 1) * (1.2 + (owner.agi / 545) * 0.6);
+      attackContext.canBeDodged = false;
+      attackContext.canBeBlocked = false;
+    }
+  }
+  onBeforeDamage(state, owner, opponent, damageContext) {
+    if (damageContext.isAssassinate && damageContext.attacker === owner) {
+      damageContext.isDodged = false;
+      damageContext.prevented = false;
+    }
+  }
+}
+
+class Berserker extends Mutation {
+  constructor() { super('Berserker', 'Legendary', ''); this.maxRage = 10; this.damagePerRage = 0.05; this.vulnerabilityPerRage = 0.04; this.leechPerRage = 0.01; }
+  onBattleStart(state, owner) { owner.flags = { berserkerRage: 0, berserkAttackedThisTurn: false }; }
+  onTurnStart(state, owner) { owner.flags.berserkAttackedThisTurn = false; }
+  onTurnEnd(state, owner) { if (!owner.flags.berserkAttackedThisTurn && owner.flags.berserkerRage > 0) owner.flags.berserkerRage--; }
+  onAfterAttack(state, owner, opponent, attackContext) {
+    if (attackContext.attacker === owner && !attackContext.isEcho && !attackContext.isDoubleStrike && !attackContext.isAssassinate && !attackContext.isPhantomStep) {
+      owner.flags.berserkAttackedThisTurn = true;
+      owner.flags.berserkerRage = Math.min(this.maxRage, (owner.flags.berserkerRage || 0) + 2);
+    }
+  }
+  onBeforeAttack(state, owner, opponent, attackContext) {
+    if (attackContext.attacker === owner) attackContext.damageMultiplier += (owner.flags.berserkerRage || 0) * this.damagePerRage;
+  }
+  onAfterDamage(state, owner, opponent, damageContext) {
+    if (damageContext.attacker !== owner || damageContext.isDodged || damageContext.prevented || damageContext.finalDamage <= 0 || damageContext.isReflection) return;
+    const rage = owner.flags.berserkerRage || 0;
+    const normStr = Math.min(owner.str / 250, 1);
+    const normAgi = Math.min(owner.agi / 545, 1);
+    const leechRate = clamp(0.07 + Math.pow(normStr, 2) * 0.18 - Math.min(normAgi * 0.1, 0.08) + rage * this.leechPerRage, 0.04, 0.20 + Math.pow(normStr, 2) * 0.08);
+    state.engine.performHeal(owner, Math.floor(damageContext.finalDamage * leechRate), { hardCap: Math.floor(owner.maxHP * 0.20) });
+  }
+  onBeforeDamage(state, owner, opponent, damageContext) {
+    if (damageContext.defender !== owner || damageContext.isDodged || damageContext.prevented) return;
+    const rage = owner.flags.berserkerRage || 0;
+    const normStr = Math.min(owner.str / 250, 1);
+    const vuln = this.vulnerabilityPerRage * (1 - Math.pow(normStr, 2) * 0.5);
+    damageContext.finalDamage = Math.floor(damageContext.finalDamage * (1 + rage * vuln));
+  }
+}
+
+class StaggeringBlow extends Mutation {
+  constructor() {
+    super('Staggering Blow', 'Rare',
+      'On Critical Hit: apply Daze to the opponent, reducing their STR and AGI by 20% for 2 turns.');
+    this.scaling = { str: 0, agi: 0, hp: 0 };
+  }
+
+  onAfterAttack(state, owner, opponent, attackContext) {
+    if (attackContext.attacker !== owner) return;
+    if (!attackContext.isCrit) return;
+    if (opponent.currentHP <= 0) return;
+
+    // Don't stack — refresh instead
+    const existing = opponent.statusEffects.find(
+      ef => ef.name === 'Daze' && ef.source === owner.name
+    );
+
+    if (existing) {
+      existing.duration = 2;
+    } else {
+      opponent.statusEffects.push({
+        name: 'Daze',
+        duration: 2,
+        source: owner.name,
+      });
+    }
+  }
+}
+
+const MUTATION_TYPES = {
+  'Bloodletting': Bloodletting,
+  'Quick Reflex': QuickReflex,
+  'Thick Hide': ThickHide,
+  'Phantom Step': PhantomStep,
+  'Assassinate': Assassinate,
+  'Berserker': Berserker,
+  'Staggering Blow': StaggeringBlow,
+};
+
+// ==========================================
+// ENGINE (stripped down from bot.js)
+// ==========================================
+class BattleState {
+  constructor(p1Data, p2Data) {
+    this.player = { name: 'Player1', maxHP: p1Data.hp || (150 + p1Data.strength * 0.5), currentHP: p1Data.hp || (150 + p1Data.strength * 0.5), str: p1Data.strength, agi: p1Data.agility, int: p1Data.intelligence || 50, mutations: (p1Data.mutations || []).map(n => new MUTATION_TYPES[n]()), statusEffects: [], flags: {} };
+    this.enemy = { name: 'Player2', maxHP: p2Data.hp || (150 + p2Data.strength * 0.5), currentHP: p2Data.hp || (150 + p2Data.strength * 0.5), str: p2Data.strength, agi: p2Data.agility, int: p2Data.intelligence || 50, mutations: (p2Data.mutations || []).map(n => new MUTATION_TYPES[n]()), statusEffects: [], flags: {} };
+    this.turnNumber = 0;
+  }
+  pushEvent() {}
+  flushGroup() {}
+}
+
+class BattleEngine {
+  constructor(p1, p2) { this.state = new BattleState(p1, p2); this.state.engine = this; this.fireHook('onBattleStart'); }
+  fireHook(hook, ctx = {}) {
+    [this.state.player, this.state.enemy].forEach(f => {
+      const opp = f === this.state.player ? this.state.enemy : this.state.player;
+      f.mutations.forEach(m => { if (m[hook]) m[hook](this.state, f, opp, ctx); });
+    });
+  }
+  performHeal(t, a, o = {}) {
+    this.fireHook('onBeforeHeal', { target: t, amount: a, ...o });
+    if (o.hardCap) a = Math.min(a, o.hardCap);
+    if (a > 0 && t.currentHP < t.maxHP) t.currentHP = Math.min(t.maxHP, t.currentHP + a);
+  }
+  performAttack(a, d, e = {}) {
+    if (this._isResolvingAttack) { this._queued = this._queued || []; this._queued.push([a, d, e]); return; }
+    this._isResolvingAttack = true;
+    if (a.currentHP <= 0 || d.currentHP <= 0) { this._isResolvingAttack = false; return; }
+    const actx = { attacker: a, defender: d, damageMultiplier: 1.0, ...e };
+    this.fireHook('onBeforeAttack', actx);
+    const dodge = e.isAssassinate ? false : Math.random() < clamp(Math.pow(d.agi / 175, 1.5) * 0.35, 0.02, 0.35);
+    if (dodge) { this.fireHook('onAfterAttack', actx); this._isResolvingAttack = false; this._proc(); return; }
+    const base = Math.max(1, Math.floor(9 + a.str * 0.125 + a.agi * 0.085));
+    const dctx = { attacker: a, defender: d, baseDamage: base, finalDamage: Math.floor(base * actx.damageMultiplier), isDodged: false, prevented: false, ...e };
+    
+    // Crit
+    const normAgiCrit = Math.min(a.agi / 280, 1);
+    const critChance = clamp(Math.pow(normAgiCrit, 1.4) * 0.35, 0, 0.35);
+    if (Math.random() < critChance) {
+      dctx.finalDamage = Math.floor(dctx.finalDamage * (1.4 + normAgiCrit * 0.50));
+      dctx.isCrit = true;
+      actx.isCrit = true;
+    }
+
+    this.fireHook('onBeforeDamage', dctx);
+    if (!dctx.prevented) d.currentHP -= dctx.finalDamage;
+    this.fireHook('onAfterDamage', dctx);
+    this.fireHook('onAfterAttack', actx);
+    if (!e.isDoubleStrike && !e.isAssassinate && !e.isEcho && Math.random() < (Math.min(a.agi / 250, 1) * 0.15)) {
+      this._queued = this._queued || []; this._queued.push([a, d, { isDoubleStrike: true, damageMultiplier: 0.75 }]);
+    }
+    this._isResolvingAttack = false;
+    this._proc();
+  }
+  _proc() { if (this._queued && this._queued.length) this.performAttack(...this._queued.shift()); }
+  runFullBattle() {
+    let turnP1 = this.state.player.agi >= this.state.enemy.agi;
+    while (this.state.player.currentHP > 0 && this.state.enemy.currentHP > 0 && this.state.turnNumber < 100) {
+      this.state.turnNumber++;
+      const [a, d] = turnP1 ? [this.state.player, this.state.enemy] : [this.state.enemy, this.state.player];
+      this.fireHook('onTurnStart');
+
+      a.statusEffects = a.statusEffects.filter(ef => {
+        if (ef.name === 'Daze') {
+          if (!ef.applied) {
+            const strPenalty = Math.floor(a.str * 0.20);
+            const agiPenalty = Math.floor(a.agi * 0.20);
+            a.str = Math.max(1, a.str - strPenalty);
+            a.agi = Math.max(1, a.agi - agiPenalty);
+            ef.strReduced = strPenalty;
+            ef.agiReduced = agiPenalty;
+            ef.applied = true;
+          }
+        }
+
+        if (ef.name === 'Bleed' && a.currentHP > 0) {
+          a.currentHP -= ef.value;
+        }
+
+        if (ef.duration <= 1 && ef.name === 'Daze') {
+          a.str += (ef.strReduced || 0);
+          a.agi += (ef.agiReduced || 0);
+        }
+
+        ef.duration--;
+        return ef.duration > 0;
+      });
+
+      if (a.currentHP > 0 && d.currentHP > 0) this.performAttack(a, d);
+      this.fireHook('onTurnEnd');
+      turnP1 = !turnP1;
+    }
+    return { won: this.state.player.currentHP > 0, turns: this.state.turnNumber };
+  }
+}
+
+// ==========================================
+// TEST RUNNER
+// ==========================================
+function runSim(p1, p2, n = 2000) {
+  let wins = 0;
+  for (let i = 0; i < n; i++) if (new BattleEngine(p1, p2).runFullBattle().won) wins++;
+  return (wins / n * 100).toFixed(1);
+}
+
+const mutationSets = [
+  { name: 'Pure Stats (No Mutations)', p1: [], p2: [] },
+  { name: 'Staggering Blow (DEX focus) vs Pure STR', p1: [], p2: ['Staggering Blow'] },
+  { name: 'Staggering Blow (DEX focus) vs Berserker STR', p1: ['Berserker'], p2: ['Staggering Blow'] },
+];
+
+console.log('--- DEX vs STR BALANCE TEST (300 to 400) [1500 HP] ---');
+console.log('Testing 1500 HP manual override parity...');
+
+mutationSets.forEach(set => {
+  console.log(`\nScenario: ${set.name}`);
+  const highStats = [300, 400];
+  console.log('STR \\ DEX | ' + highStats.map(s => String(s).padStart(5)).join(' | '));
+  console.log('-----------|' + highStats.map(() => '-------').join('|'));
+  highStats.forEach(str => {
+    let row = String(str).padEnd(10) + ' | ';
+    highStats.forEach(dex => {
+      const p1 = { strength: str, agility: 50, hp: 1500, mutations: set.p1 };
+      const p2 = { strength: 50, agility: dex, hp: 1500, mutations: set.p2 };
+      row += runSim(p1, p2, 5000).padStart(5) + '% | ';
+    });
+    console.log(row);
+  });
+});

@@ -1,0 +1,7 @@
+P1 vs P2,P1 Win%,Avg Turns,Verdict
+"Pure STR vs Pure AGI","69.5%","8.2","Pure STR dominant"
+"Pure STR vs Hybrid","13.5%","9.8","Hybrid dominant"
+"Pure AGI vs Pure STR","31.8%","8.2","Pure STR dominant"
+"Pure AGI vs Hybrid","32.3%","8.5","Hybrid dominant"
+"Hybrid vs Pure STR","85.5%","9.7","Hybrid dominant"
+"Hybrid vs Pure AGI","71.4%","8.3","Hybrid dominant"

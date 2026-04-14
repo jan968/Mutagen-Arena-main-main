@@ -1,0 +1,28 @@
+# Staggering Blow Fixes
+
+The recently added "Staggering Blow" mutation has a few critical issues that need to be addressed.
+
+## User Review Required
+
+> [!IMPORTANT]
+> The current "Daze" logic causes permanent stat loss. After the effect wears off, the player's stats do not return to their original values. My fix will ensure stats are restored correctly.
+
+## Proposed Changes
+
+### [app.js](file:///c:/Users/Thai%20Harmony/Downloads/GAME/app.js)
+
+#### 1. Mutation Registry Syntax Error
+- Fix the missing colon in `MUTATION_TYPES` for `'StaggeringBlow'`.
+
+#### 2. Daze Effect Logic
+- **Current Issue**: Stats are reduced by 20% every turn of the daze, and only restored once at a lower value.
+- **Fix**: 
+    - Modify the `Daze` application to store the total amount reduced.
+    - Change [executeTurn](file:///c:/Users/Thai%20Harmony/Downloads/GAME/bot.js#873-943) to only reduce stats *once* when the effect starts (or use a cleaner modifier approach).
+    - Given the existing architecture, the simplest fix is to store `strReduced` and `agiReduced` in the `effect` object and restore them upon expiration.
+
+## Verification Plan
+
+### Automated Tests
+1. **Balance Test**: Run `node test_dex_vs_str.js` (after updating it with the new mutation) to ensure "Staggering Blow" doesn't break the engine.
+2. **Manual Check**: Check the console/log output during a battle in the game to ensure "Daze" applies and expires correctly.
