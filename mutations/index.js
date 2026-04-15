@@ -2,12 +2,11 @@ const MUTATION_TYPES = {
   // --- EXISTING / GOOD ---
   'Bloodletting': Bloodletting, // bleed dot
   'Corrosive Touch': CorrosiveTouch, // corrosive dot
-  'Momentum': Momentum, // str dmg
+  'Momentum': Momentum, // str dmg, gotta check scaling TODO
   'Assassinate': TimeWarp, // (Mapped to your TimeWarp class)
   'Second Wind': SecondWind, // heal
   'Quick Reflex': QuickReflex, // dodge chance
   'Echo Strike': EchoStrike, // works awesome now, looks cool on agi
-  'Lifetap': Lifetap, // lifesteal and taking dmg, lower hp more dmg / might need tuning
   'Thorn Skin': ThornSkin, // thorn reflect
 
   // Rework maybe
@@ -23,12 +22,15 @@ const MUTATION_TYPES = {
   'Phantom Step': PhantomStep,
   'Staggering Blow': StaggeringBlow,
 
-  // TESTING PHASE
-  'Bloodthirst': Bloodthirst,
-
   // NEW INT
   'Magic Shield': MagicShield,
   'Mind Blast': MindBlast,
   'Blizzard': Blizzard,
   'Reality Fracture': RealityFracture,
+
+
+
+  // Remake
+   'Lifetap': Lifetap, // lifesteal and taking dmg, lower hp more dmg / might need tuning, change animation for melle TODO, basicly overhaul everything about it
+   'Bloodthirst': Bloodthirst, // Remake and test seems boring atm
 };
