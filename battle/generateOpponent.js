@@ -31,7 +31,7 @@ function generateOpponent(playerElo) {
     agility: 0,
     intelligence: 0,
     hp: 1800,
-    mutations: ['Thick Hide', 'Iron Will', 'Second Wind']
+    mutations: ['Second Wind']
   };
 
   return {

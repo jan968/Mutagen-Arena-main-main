@@ -1751,77 +1751,69 @@ effects.push(new FloatingTextEffect(
 function playAssassinate(attackerEl, defenderEl) {
     if (!canvas) return;
 
+    // Fire a small departure cue immediately so it feels connected
     const from = avatarCenter(attackerEl);
-    const to = avatarCenter(defenderEl);
-
-    const pRect = attackerEl.getBoundingClientRect();
-    const eRect = defenderEl.getBoundingClientRect();
-    const distance = Math.max(0, Math.abs(eRect.left - pRect.right)) + 50;
-    attackerEl.style.setProperty('--attack-distance', `${distance}px`);
-
-    const dashDuration = 450;
-    const vanishDelay = 30;
-    const impactDelay = 90;
-
-    attackerEl.classList.remove('attack-smash', 'attack-dash', 'attack-lunge', 'hit-flash', 'echo-hit-flash');
-    void attackerEl.offsetHeight;
-    attackerEl.classList.add('attack-dash');
-
-    // departure cue
     effects.push(new RingEffect(from.x, from.y, {
-        color: '#7c3aed',
-        maxRadius: 14,
-        duration: 180,
-        lineWidth: 3
+        color: '#7c3aed', maxRadius: 14, duration: 180, lineWidth: 3
     }));
 
+    // Delay the actual dash so the preceding lunge can play out
     setTimeout(() => {
-        attackerEl.classList.add('assassinate-vanish');
-    }, vanishDelay);
+        const from = avatarCenter(attackerEl);
+        const to = avatarCenter(defenderEl);
 
-    setTimeout(() => {
-        attackerEl.classList.remove('assassinate-vanish');
-        attackerEl.classList.add('assassinate-reappear');
+        const pRect = attackerEl.getBoundingClientRect();
+        const eRect = defenderEl.getBoundingClientRect();
+        const distance = Math.max(0, Math.abs(eRect.left - pRect.right)) + 50;
+        attackerEl.style.setProperty('--attack-distance', `${distance}px`);
 
-        // impact ring at defender
-        effects.push(new RingEffect(to.x, to.y, {
-            color: '#a78bfa',
-            maxRadius: 26,
-            duration: 260,
-            lineWidth: 5
-        }));
+        const vanishDelay = 30;
+        const impactDelay = 90;
 
-        for (let i = 0; i < 16; i++) {
-            const angle = rand(0, Math.PI * 2);
-            spawnParticle({
-                x: to.x,
-                y: to.y,
-                vx: Math.cos(angle) * rand(3, 8),
-                vy: Math.sin(angle) * rand(3, 8),
-                gravity: 0.05,
-                drag: 0.88,
-                size: rand(2, 4),
-                color: randChoice(['#a78bfa', '#7c3aed', '#ffffff']),
-                glow: '#a78bfa',
-                glowRadius: 10,
-                decay: 0.05,
-                shape: 'circle',
-            });
-        }
+        attackerEl.classList.remove('attack-smash', 'attack-dash', 'attack-lunge', 'hit-flash', 'echo-hit-flash');
+        void attackerEl.offsetHeight;
+        attackerEl.classList.add('attack-dash');
 
-        defenderEl.classList.remove('echo-hit-flash');
-        void defenderEl.offsetHeight;
-        defenderEl.classList.add('echo-hit-flash');
+        setTimeout(() => {
+            attackerEl.classList.add('assassinate-vanish');
+        }, vanishDelay);
 
-        arena.classList.remove('shake-hard', 'vfx-flash');
-        void arena.offsetHeight;
-        arena.classList.add('shake-hard', 'vfx-flash');
-    }, impactDelay);
+        setTimeout(() => {
+            attackerEl.classList.remove('assassinate-vanish');
+            attackerEl.classList.add('assassinate-reappear');
 
-    setTimeout(() => {
-        attackerEl.classList.remove('assassinate-reappear');
-    }, impactDelay + 80);
+            effects.push(new RingEffect(to.x, to.y, {
+                color: '#a78bfa', maxRadius: 26, duration: 260, lineWidth: 5
+            }));
+
+            for (let i = 0; i < 16; i++) {
+                const angle = rand(0, Math.PI * 2);
+                spawnParticle({
+                    x: to.x, y: to.y,
+                    vx: Math.cos(angle) * rand(3, 8),
+                    vy: Math.sin(angle) * rand(3, 8),
+                    gravity: 0.05, drag: 0.88, size: rand(2, 4),
+                    color: randChoice(['#a78bfa', '#7c3aed', '#ffffff']),
+                    glow: '#a78bfa', glowRadius: 10, decay: 0.05, shape: 'circle',
+                });
+            }
+
+            defenderEl.classList.remove('echo-hit-flash');
+            void defenderEl.offsetHeight;
+            defenderEl.classList.add('echo-hit-flash');
+
+            arena.classList.remove('shake-hard', 'vfx-flash');
+            void arena.offsetHeight;
+            arena.classList.add('shake-hard', 'vfx-flash');
+        }, impactDelay);
+
+        setTimeout(() => {
+            attackerEl.classList.remove('assassinate-reappear');
+        }, impactDelay + 80);
+
+    }, 100); // ← lets the triggering lunge play before assassinate takes over
 }
+
 
     function playAssassinateDamage(defenderEl, value) {
         if (!canvas) return;

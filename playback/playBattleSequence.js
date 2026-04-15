@@ -82,7 +82,7 @@ async function playBattleSequence(result, duration, timePerEvent) {
         const isAssassinateGroup = group.some(e => e.type === 'TIME_WARP_TRIGGER');
         const isMageAttack = ['INT', 'SPELLBLADE', 'NIGHTSHADE'].includes(groupAttackStart.attackType);
 
-        if (!isAssassinateGroup && !isMageAttack) {
+        if (!isMageAttack) {
             const isPlayer = groupAttackStart.source === 'You';
             const animTarget = isPlayer ? playerAvatar : enemyAvatar;
             
@@ -453,16 +453,21 @@ if (event.type === 'BLEED_TICK') {
         );
       }
 
-      if (event.type === 'TIME_WARP_TRIGGER') {
-        const attackerIsPlayer = event.source === 'You';
-        VFX.playTimeWarp(
-          attackerIsPlayer ? playerAvatar : enemyAvatar
-        );
-        VFX.playAssassinate(
-          attackerIsPlayer ? playerAvatar : enemyAvatar,
-          attackerIsPlayer ? enemyAvatar : playerAvatar
-        );
-      }
+    if (event.type === 'TIME_WARP_TRIGGER') {
+    const attackerIsPlayer = event.source === 'You';
+
+    // Wait for the triggering attack's lunge to finish before assassinate fires
+    const lungeWait = Math.max(0, groupConfig.duration - 100); // subtract the 100ms already slept
+    await pauseableSleep(lungeWait);
+
+    VFX.playTimeWarp(
+        attackerIsPlayer ? playerAvatar : enemyAvatar
+    );
+    VFX.playAssassinate(
+        attackerIsPlayer ? playerAvatar : enemyAvatar,
+        attackerIsPlayer ? enemyAvatar : playerAvatar
+    );
+}
 
       if (event.type === 'LIFETAP_DRAIN') {
         const isPlayer = event.source === 'You';
