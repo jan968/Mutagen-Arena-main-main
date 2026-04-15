@@ -20,7 +20,7 @@ let isBattleActive = true;
 const ATTACK_CONFIG = {
   STR:     { duration: 850, impactTime: 0.4, class: 'attack-smash' },
   VANGUARD: { duration: 850, impactTime: 0.4, class: 'attack-smash' },
-  NOVICE:   { duration: 850, impactTime: 0.4, class: 'attack-smash' },
+  NOVICE:   { duration: 850, impactTime: 0.4, class: 'attack-smash' }, // we will remove novice
   AGI: { duration: 450, impactTime: 0.15, class: 'attack-dash' },
   NIGHTSHADE: { duration: 450, impactTime: 0.15, class: 'attack-dash' },
   DEX: { duration: 450, impactTime: 0.15, class: 'attack-dash' },
@@ -179,13 +179,13 @@ async function playBattleSequence(result, duration, timePerEvent) {
         'MOMENTUM_STACK', 'BERSERKER_STACK', 'CHARGE_UPDATE',
         'DOUBLE_STRIKE', 'ECHO_STRIKE', 'THICK_HIDE_BLOCK',
         'IRON_WILL_BLOCK', 'MAGIC_SHIELD_REFRESH', 'ES_RECHARGE',
-        'DAMAGE', 'CRIT', 'ATTACK_START', 'REALITY_FRACTURE'
+        'DAMAGE', 'CRIT', 'ATTACK_START', 'REALITY_FRACTURE' , 'ES_ABSORB',
       ];
 
       const importantEvents = [
         'DEATH', 'BLEED_TICK', 'HEAL', 'DODGE', 'ES_DEPLETED',
         'CHILL_SHATTER', 'CHILL_APPLY', 'TIME_WARP_TRIGGER',
-        'CORROSIVE_APPLY', 'BLEED_APPLY', 'ES_ABSORB',
+        'CORROSIVE_APPLY', 'BLEED_APPLY',
         'PHANTOM_STEP', 'SECOND_WIND', 'LIFETAP_DRAIN',
         'THORN_REFLECT', 'MIND_BLAST',
       ];
