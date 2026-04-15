@@ -16,12 +16,12 @@ const gameState = {
     losses: 0,
     totalBattles: 0,
     strength: 0,
-    agility: 0,
-    intelligence: 400,
+    agility: 400,
+    intelligence: 0,
     winStreak: 0,
     coins: 20,
     hp: 1800,
-    mutations: ['Reality Fracture']
+    mutations: ['Bloodletting', 'Reality Fracture', 'Assassinate', 'Corrosive Touch']
   },
 
   battleLog: [],

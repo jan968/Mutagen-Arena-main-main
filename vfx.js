@@ -1753,29 +1753,44 @@ effects.push(new FloatingTextEffect(
         const from = avatarCenter(attackerEl);
         const to = avatarCenter(defenderEl);
 
-        attackerEl.style.transition = 'opacity 0.08s';
-        attackerEl.style.opacity = '0';
+        // Compute dynamic gap and inject --attack-distance so attack-dash CSS works
+        const pRect = attackerEl.getBoundingClientRect();
+        const eRect = defenderEl.getBoundingClientRect();
+        const distance = Math.max(0, Math.abs(eRect.left - pRect.right)) + 50;
+        attackerEl.style.setProperty('--attack-distance', `${distance}px`);
 
+        // Phase 1: dash lunge (reuses AGI speed CSS)
+        attackerEl.classList.remove('attack-smash', 'attack-dash', 'attack-lunge', 'hit-flash', 'echo-hit-flash');
+        void attackerEl.offsetHeight;
+        attackerEl.classList.add('attack-dash');
+
+        // Phase 2: at impact point, fade out then reappear with particle burst
         setTimeout(() => {
-            attackerEl.style.opacity = '1';
+            attackerEl.style.transition = 'opacity 0.06s';
+            attackerEl.style.opacity = '0';
 
-            effects.push(new RingEffect(from.x, from.y, { color: '#a78bfa', maxRadius: 18, duration: 400, lineWidth: 5 }));
-            effects.push(new RingEffect(from.x, from.y, { color: '#7c3aed', maxRadius: 12, duration: 450, delay: 50, lineWidth: 4 }));
+            setTimeout(() => {
+                attackerEl.style.opacity = '1';
+                attackerEl.style.transition = '';
 
-            for (let i = 0; i < 30; i++) {
-                const angle = rand(0, Math.PI * 2);
-                spawnParticle({
-                    x: to.x, y: to.y,
-                    vx: Math.cos(angle) * rand(3, 9), vy: Math.sin(angle) * rand(3, 9),
-                    gravity: 0.05, drag: 0.88, size: rand(2, 5),
-                    color: randChoice(['#a78bfa', '#7c3aed', '#ffffff']), glow: '#a78bfa', glowRadius: 12, decay: 0.04, shape: 'circle',
-                });
-            }
+                effects.push(new RingEffect(from.x, from.y, { color: '#a78bfa', maxRadius: 18, duration: 400, lineWidth: 5 }));
+                effects.push(new RingEffect(from.x, from.y, { color: '#7c3aed', maxRadius: 12, duration: 450, delay: 50, lineWidth: 4 }));
 
-            defenderEl.classList.remove('echo-hit-flash'); void defenderEl.offsetHeight; defenderEl.classList.add('echo-hit-flash');
-            arena.classList.remove('shake-hard'); void arena.offsetHeight; arena.classList.add('shake-hard');
-            arena.classList.add('vfx-flash');
-        }, 120);
+                for (let i = 0; i < 30; i++) {
+                    const angle = rand(0, Math.PI * 2);
+                    spawnParticle({
+                        x: to.x, y: to.y,
+                        vx: Math.cos(angle) * rand(3, 9), vy: Math.sin(angle) * rand(3, 9),
+                        gravity: 0.05, drag: 0.88, size: rand(2, 5),
+                        color: randChoice(['#a78bfa', '#7c3aed', '#ffffff']), glow: '#a78bfa', glowRadius: 12, decay: 0.04, shape: 'circle',
+                    });
+                }
+
+                defenderEl.classList.remove('echo-hit-flash'); void defenderEl.offsetHeight; defenderEl.classList.add('echo-hit-flash');
+                arena.classList.remove('shake-hard'); void arena.offsetHeight; arena.classList.add('shake-hard');
+                arena.classList.add('vfx-flash');
+            }, 80);
+        }, 67); // 450 * 0.15 ≈ 67ms — matches ATTACK_CONFIG.AGI impactTime
     }
 
     function playAssassinateDamage(defenderEl, value) {

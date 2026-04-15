@@ -17,11 +17,23 @@ function renderChargeIndicator(charges, maxCharges, containerEl) {
 
 let isBattleActive = true;
 
+const ATTACK_CONFIG = {
+  STR:     { duration: 850, impactTime: 0.4, class: 'attack-smash' },
+  VANGUARD: { duration: 850, impactTime: 0.4, class: 'attack-smash' },
+  NOVICE:   { duration: 850, impactTime: 0.4, class: 'attack-smash' },
+  AGI: { duration: 450, impactTime: 0.15, class: 'attack-dash' },
+  NIGHTSHADE: { duration: 450, impactTime: 0.15, class: 'attack-dash' },
+  DEX: { duration: 450, impactTime: 0.15, class: 'attack-dash' },
+  DEFAULT: { duration: 750, impactTime: 0.5, class: 'attack-lunge' }
+};
+
+let currentAttackId = 0;
+
 const animationMap = {
   LIFESTEAL: "lifesteal-glow",
   BLOCK: "shield-flash",
   STUN: "stun-effect",
-  ATTACK_START: "attack-lunge",
+  ATTACK_START: "attack-lunge", // Will be overridden dynamically
   THORN_REFLECT: "hit-flash",
   TIME_WARP_TRIGGER: "lifesteal-glow",
 };
@@ -55,16 +67,67 @@ async function playBattleSequence(result, duration, timePerEvent) {
 
     VFX.cacheCombatAnchors(arena, playerAvatar, enemyAvatar);
 
-    // If this group is a mage attack (180), rest (100) add a brief pause before it starts
     const groupAttackStart = group.find(e => e.type === 'ATTACK_START');
-    const isMageGroup = groupAttackStart && ['INT', 'SPELLBLADE', 'NIGHTSHADE'].includes(groupAttackStart.attackType);
-    const isOtherGroup = groupAttackStart && ['STR', 'AGI', 'DEX', 'NOVICE', 'VANGUARD'].includes(groupAttackStart.attackType);
+    let groupHasAttack = false;
+    let groupConfig = ATTACK_CONFIG.DEFAULT;
+    let attackId = 0;
+    
+    if (groupAttackStart) {
+        groupHasAttack = true;
+        groupConfig = ATTACK_CONFIG[groupAttackStart.attackType] || ATTACK_CONFIG.DEFAULT;
+        attackId = ++currentAttackId;
+        animationMap.ATTACK_START = groupConfig.class;
 
-    if (isMageGroup) {
-      await pauseableSleep(620);
-    } else if (isOtherGroup) {
-      await pauseableSleep(100);
+        // Skip CSS lunge for: Assassinate (uses vfx teleport) and INT/Mage (uses cast animation)
+        const isAssassinateGroup = group.some(e => e.type === 'TIME_WARP_TRIGGER');
+        const isMageAttack = ['INT', 'SPELLBLADE', 'NIGHTSHADE'].includes(groupAttackStart.attackType);
+
+        if (!isAssassinateGroup && !isMageAttack) {
+            const isPlayer = groupAttackStart.source === 'You';
+            const animTarget = isPlayer ? playerAvatar : enemyAvatar;
+            
+            animTarget.classList.remove('attack-smash', 'attack-dash', 'attack-lunge', 'attack-cast', 'cast-player', 'cast-enemy', 'hit-flash', 'echo-hit-flash', 'recoil-player', 'recoil-enemy');
+            void animTarget.offsetHeight;
+
+            const pRect = playerAvatar.getBoundingClientRect();
+            const eRect = enemyAvatar.getBoundingClientRect();
+            const distance = Math.max(0, eRect.left - pRect.right) + 50; // Deep overlap for visual impact
+            animTarget.style.setProperty('--attack-distance', `${distance}px`);
+            animTarget.classList.add(groupConfig.class); // Apply the smash/dash/lunge class
+        }
+
+        const isMageGroup = ['INT', 'SPELLBLADE', 'NIGHTSHADE'].includes(groupAttackStart.attackType);
+        if (isMageGroup) {
+            await pauseableSleep(620);
+        } else {
+            await pauseableSleep(100);
+        }
     }
+
+    const scheduleImpact = (fn) => {
+        if (groupHasAttack && !['INT', 'SPELLBLADE'].includes(groupAttackStart.attackType)) {
+            const delay = groupConfig.duration * groupConfig.impactTime;
+            const scopedId = attackId;
+            setTimeout(() => {
+                if (currentAttackId !== scopedId) return;
+                fn();
+                if (groupConfig.class === 'attack-smash') {
+                    const attackerEl = groupAttackStart.source === 'You' ? playerAvatar : enemyAvatar;
+                    const defenderEl = groupAttackStart.source === 'You' ? enemyAvatar : playerAvatar;
+                    if(attackerEl) attackerEl.style.animationPlayState = 'paused';
+                    if(defenderEl) defenderEl.style.animationPlayState = 'paused';
+                    setTimeout(() => {
+                        window.requestAnimationFrame(() => {
+                            if (attackerEl) attackerEl.style.animationPlayState = '';
+                            if (defenderEl) defenderEl.style.animationPlayState = '';
+                        });
+                    }, 40);
+                }
+            }, delay);
+        } else {
+            fn(); 
+        }
+    };
 
     const hasBlizzardEvent = group.some(e =>
       e.type === 'CHILL_APPLY' || e.type === 'CHILL_SHATTER'
@@ -94,9 +157,9 @@ async function playBattleSequence(result, duration, timePerEvent) {
       // handled by a special hit animation (Crit, Assassinate, etc).
       const finalDamage = (damageEvent && !damageEvent.isCrit && !damageEvent.isAssassinate) ? damageEvent.value : null;
 
-      setTimeout(() => {
+      scheduleImpact(() => {
         VFX.playArmorBlock(defenderEl, attackerEl, thickEvent.value, ironEvent.value, missingHP, finalDamage);
-      }, 375);
+      });
     }
 
     for (const event of group) {
@@ -139,7 +202,7 @@ async function playBattleSequence(result, duration, timePerEvent) {
       } else if (!silentEvents.includes(event.type)) {
         const logText = generateBattleLog(event);
         if (logText && !logText.startsWith('[') && event.value !== 0) {
-          textEl.textContent = logText;
+          scheduleImpact(() => textEl.textContent = logText);
         }
       }
 
@@ -153,14 +216,16 @@ async function playBattleSequence(result, duration, timePerEvent) {
         !(event.type === 'DAMAGE' && hasFractureEvent) &&
         !['DODGE', 'ATTACK_START', 'DEATH', 'ECHO_STRIKE', 'CHARGE_UPDATE', 'MOMENTUM_STACK', 'BLEED_APPLY', 'CORROSIVE_APPLY', 'TIME_WARP_TRIGGER', 'THICK_HIDE_BLOCK', 'IRON_WILL_BLOCK', 'PHANTOM_STEP', 'MAGIC_SHIELD_REFRESH', 'MAGIC_SHIELD_ABSORB', 'HEAL', 'BLOCK', 'DOUBLE_STRIKE', 'CRIT', 'BERSERKER_STACK', 'REALITY_FRACTURE'].includes(event.type)) {
         let belongsToPlayer = (event.target === 'You' || event.target === gameState.player.name);
-        if (belongsToPlayer) {
-          setHpBar(true, event.resultingHP);
-          const rawHP = Math.round((event.resultingHP / 100) * gameState.playerMaxHP);
-          hpAnimators.player?.set(rawHP);
-        } else {
-          setHpBar(false, event.resultingHP);
-          hpAnimators.enemy?.set(Math.round((event.resultingHP / 100) * result.enemyMaxHP));
-        }
+        scheduleImpact(() => {
+          if (belongsToPlayer) {
+            setHpBar(true, event.resultingHP);
+            const rawHP = Math.round((event.resultingHP / 100) * gameState.playerMaxHP);
+            hpAnimators.player?.set(rawHP);
+          } else {
+            setHpBar(false, event.resultingHP);
+            hpAnimators.enemy?.set(Math.round((event.resultingHP / 100) * result.enemyMaxHP));
+          }
+        });
       }
 
       if (event.type === 'ES_ABSORB' || event.type === 'ES_RECHARGE' || event.type === 'MAGIC_SHIELD_REFRESH') {
@@ -175,12 +240,12 @@ async function playBattleSequence(result, duration, timePerEvent) {
           const allAbsorbs = group.filter(e => e.type === 'ES_ABSORB' && e.target === event.target);
           if (allAbsorbs[0] === event) {
             const totalAbsorb = allAbsorbs.reduce((sum, e) => sum + (e.value || 0), 0);
-            setTimeout(() => {
+            scheduleImpact(() => {
               VFX.playEsAbsorb(
                 isPlayer ? playerAvatar : enemyAvatar,
                 totalAbsorb
               );
-            }, 375);
+            });
           }
         }
       }
@@ -213,8 +278,6 @@ async function playBattleSequence(result, duration, timePerEvent) {
         const animator = isPlayer ? esAnimators.player : esAnimators.enemy;
         if (animator) animator.set(0);
       }
-
-
 
       const animClass = animationMap[event.type];
 
@@ -258,11 +321,15 @@ async function playBattleSequence(result, duration, timePerEvent) {
               if (!sourceAv || !targetAv) return;
               VFX.playMagicBolt(sourceAv, targetAv, boltColor);
             }, 80);
+          } else {
+            // STR / AGI / DEX — already handled by the new groupAttackStart system at top of group.
+            // Class + distance are already applied. Skip re-applying here to avoid class flush.
+            animTarget = null;
           }
         }
 
         if (animTarget) {
-          animTarget.classList.remove('attack-lunge', 'attack-cast', 'cast-player', 'cast-enemy', 'hit-flash');
+          animTarget.classList.remove('attack-smash', 'attack-dash', 'attack-lunge', 'attack-cast', 'cast-player', 'cast-enemy', 'hit-flash');
           void animTarget.offsetHeight;
           animTarget.classList.add(finalAnim);
         }
@@ -304,26 +371,26 @@ async function playBattleSequence(result, duration, timePerEvent) {
           console.log('[DAMAGE-BRANCH] → ASSASSINATE');
           const defenderIsPlayer = (event.target === 'You' || event.target === gameState.player.name);
           const targetEl = defenderIsPlayer ? playerAvatar : enemyAvatar;
-          setTimeout(() => {
+          scheduleImpact(() => {
             VFX.playAssassinateDamage(targetEl, event.value);
-          }, 120);
+          });
         } else if (event.isCrit) {
-          setTimeout(() => {
+          scheduleImpact(() => {
             VFX.playCrit(
               attackerIsPlayer ? playerAvatar : enemyAvatar,
               attackerIsPlayer ? enemyAvatar : playerAvatar,
               event.value
             );
-          }, 0);
+          });
         } else if (!hasCombinedBlock) {
-          setTimeout(() => {
+          scheduleImpact(() => {
             VFX.playHit(
               attackerIsPlayer ? playerAvatar : enemyAvatar,
               attackerIsPlayer ? enemyAvatar : playerAvatar,
               event.value,
               isMagicAttack
             );
-          }, 420);
+          });
         } else {
         }
       }
@@ -451,13 +518,13 @@ if (event.type === 'BLEED_TICK') {
       if (event.type === 'THICK_HIDE_BLOCK' && !hasCombinedBlock) {
         const defenderIsPlayer = event.target === 'You';
         const attackerIsPlayer = event.source === 'You';
-        setTimeout(() => {
+        scheduleImpact(() => {
           VFX.playThickHide(
             defenderIsPlayer ? document.getElementById('playerAvatar') : document.getElementById('enemyAvatar'),
             attackerIsPlayer ? document.getElementById('playerAvatar') : document.getElementById('enemyAvatar'),
             event.value
           );
-        }, 420);
+        });
       }
 
       // Solo Iron Will only — skip if combined already fired
@@ -471,9 +538,9 @@ if (event.type === 'BLEED_TICK') {
           : document.getElementById('enemyHpBar');
         const currentWidthPct = parseFloat(hpBar.style.width) || 100;
         const missingHP = 1 - (currentWidthPct / 100);
-        setTimeout(() => {
+        scheduleImpact(() => {
           VFX.playIronWill(defenderEl, attackerEl, event.value, missingHP);
-        }, 420);
+        });
       }
 
 

@@ -939,56 +939,105 @@ background: linear-gradient(90deg, #7f1d1d, #ef4444);
 
 
 @keyframes lungeRight {
-  0% {
-    transform: translateX(0) scale(1);
+ 0% {
+    transform: translate3d(0, 0, 0) scale(1);
   }
 
-  18% {
-    transform: translateX(calc(var(--lunge-distance) * 0.15)) scale(1.03);
+  15% {
+    transform: translate3d(calc(var(--lunge-distance) * 0.08), 0, 0) scale(1.01);
   }
 
-  50% {
-    transform: translateX(calc(var(--lunge-distance) * 1.05)) scale(1.12);
+  45% {
+    transform: translate3d(calc(var(--lunge-distance) * 1.08), 0, 0) scale(1.06);
   }
 
-  70% {
-    transform: translateX(calc(var(--lunge-distance) * 0.92)) scale(1.05);
+  60% {
+    transform: translate3d(calc(var(--lunge-distance) * 0.98), 0, 0) scale(1.02);
   }
 
   100% {
-    transform: translateX(0) scale(1);
+    transform: translate3d(0, 0, 0) scale(1);
   }
 }
 
 @keyframes lungeLeft {
   0% {
-    transform: translateX(0) scaleX(-1) scale(1);
+    transform: translate3d(0, 0, 0) scale(1);
   }
 
-  18% {
-    transform: translateX(calc(var(--lunge-distance) * -0.15)) scaleX(-1) scale(1.03);
+  15% {
+    transform: translate3d(calc(var(--lunge-distance) * -0.08), 0, 0) scale(1.01);
   }
 
-  50% {
-    transform: translateX(calc(var(--lunge-distance) * -1.05)) scaleX(-1) scale(1.12);
+  45% {
+    transform: translate3d(calc(var(--lunge-distance) * -1.08), 0, 0) scale(1.06);
   }
 
-  70% {
-    transform: translateX(calc(var(--lunge-distance) * -0.92)) scaleX(-1) scale(1.05);
+  60% {
+    transform: translate3d(calc(var(--lunge-distance) * -0.98), 0, 0) scale(1.02);
   }
 
   100% {
-    transform: translateX(0) scaleX(-1) scale(1);
+    transform: translate3d(0, 0, 0) scale(1);
   }
 }
 
 .fighter-player .fighter-avatar.attack-lunge {
   animation: lungeRight 0.75s cubic-bezier(0.18, 0.9, 0.25, 1);
 }
-
 .fighter-enemy .fighter-avatar.attack-lunge {
   animation: lungeLeft 0.75s cubic-bezier(0.18, 0.9, 0.25, 1);
 }
+
+@keyframes smashRight {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  40% {
+    transform: translate3d(calc(var(--attack-distance) * 1.1), 0, 0) scale(1.08, 0.92);
+  }
+  60% {
+    transform: translate3d(calc(var(--attack-distance) * 0.95), 0, 0) scale(0.98, 1.02);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes smashLeft {
+  0% {
+    transform: translate3d(0, 0, 0) scaleX(-1);
+  }
+  40% {
+    transform: translate3d(calc(var(--attack-distance) * -1.1), 0, 0) scale(-1.08, 0.92);
+  }
+  60% {
+    transform: translate3d(calc(var(--attack-distance) * -0.95), 0, 0) scale(-0.98, 1.02);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scaleX(-1);
+  }
+}
+
+.fighter-player .fighter-avatar.attack-smash { animation: smashRight 0.85s cubic-bezier(0.4, 0.0, 0.2, 1); }
+.fighter-enemy .fighter-avatar.attack-smash { animation: smashLeft 0.85s cubic-bezier(0.4, 0.0, 0.2, 1); }
+
+@keyframes dashRight {
+  0% { transform: translateX(0); }
+  15% { transform: translateX(var(--attack-distance)) scaleX(1.3); opacity: 0.8; }
+  40% { transform: translateX(var(--attack-distance)) scaleX(1); opacity: 1; }
+  100% { transform: translateX(0); }
+}
+
+@keyframes dashLeft {
+  0% { transform: translateX(0) scaleX(-1); }
+  15% { transform: translateX(calc(var(--attack-distance) * -1)) scaleX(-1.3); opacity: 0.8; }
+  40% { transform: translateX(calc(var(--attack-distance) * -1)) scaleX(-1); opacity: 1; }
+  100% { transform: translateX(0) scaleX(-1); }
+}
+
+.fighter-player .fighter-avatar.attack-dash { animation: dashRight 0.45s cubic-bezier(0.25, 0.1, 0.25, 1); }
+.fighter-enemy .fighter-avatar.attack-dash { animation: dashLeft 0.45s cubic-bezier(0.25, 0.1, 0.25, 1); }
 
 /* Hit flash */
 .fighter-avatar.hit-flash {
@@ -1001,6 +1050,22 @@ background: linear-gradient(90deg, #7f1d1d, #ef4444);
 
 .fighter-enemy .fighter-avatar.attack-lunge.hit-flash {
   animation: lungeLeft 0.75s cubic-bezier(0.18, 0.9, 0.25, 1), hitFlash 0.3s ease;
+}
+
+.fighter-player .fighter-avatar.attack-smash.hit-flash {
+  animation: smashRight 0.85s cubic-bezier(0.4, 0.0, 0.2, 1), hitFlash 0.3s ease;
+}
+
+.fighter-enemy .fighter-avatar.attack-smash.hit-flash {
+  animation: smashLeft 0.85s cubic-bezier(0.4, 0.0, 0.2, 1), hitFlash 0.3s ease;
+}
+
+.fighter-player .fighter-avatar.attack-dash.hit-flash {
+  animation: dashRight 0.45s cubic-bezier(0.25, 0.1, 0.25, 1), hitFlash 0.3s ease;
+}
+
+.fighter-enemy .fighter-avatar.attack-dash.hit-flash {
+  animation: dashLeft 0.45s cubic-bezier(0.25, 0.1, 0.25, 1), hitFlash 0.3s ease;
 }
 
 /* Allow hit flash during casting */
@@ -1089,6 +1154,22 @@ background: linear-gradient(90deg, #7f1d1d, #ef4444);
 
 .fighter-enemy .fighter-avatar.attack-lunge.echo-hit-flash {
   animation: lungeLeft 0.75s cubic-bezier(0.18, 0.9, 0.25, 1), echoHitFlash 0.3s ease;
+}
+
+.fighter-player .fighter-avatar.attack-smash.echo-hit-flash {
+  animation: smashRight 0.85s cubic-bezier(0.4, 0.0, 0.2, 1), echoHitFlash 0.3s ease;
+}
+
+.fighter-enemy .fighter-avatar.attack-smash.echo-hit-flash {
+  animation: smashLeft 0.85s cubic-bezier(0.4, 0.0, 0.2, 1), echoHitFlash 0.3s ease;
+}
+
+.fighter-player .fighter-avatar.attack-dash.echo-hit-flash {
+  animation: dashRight 0.45s cubic-bezier(0.25, 0.1, 0.25, 1), echoHitFlash 0.3s ease;
+}
+
+.fighter-enemy .fighter-avatar.attack-dash.echo-hit-flash {
+  animation: dashLeft 0.45s cubic-bezier(0.25, 0.1, 0.25, 1), echoHitFlash 0.3s ease;
 }
 
 @keyframes recoil {
