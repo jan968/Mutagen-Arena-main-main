@@ -21,7 +21,7 @@ const gameState = {
     winStreak: 0,
     coins: 20,
     hp: 1800,
-    mutations: ['Assassinate', 'Echo Strike', 'Bloodletting', 'Corrosive Touch', 'Reality Fracture', 'Staggering Blow']
+    mutations: ['Bloodletting', 'Corrosive Touch', 'Assassinate', 'Reality Fracture']
   },
 
   battleLog: [],

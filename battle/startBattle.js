@@ -114,7 +114,7 @@ function startBattle() {
   // Swap enemy avatar based on class
   if (enemyAv) {
     const isEnemyMage = ['INT', 'SPELLBLADE', 'NIGHTSHADE'].includes(oppIdentity.attackType);
-    const enemyImgUrl = isEnemyMage ? 'assets/images/enemy_mage.png' : 'assets/images/enemy_avatar.png';
+    const enemyImgUrl = isEnemyMage ? 'assets/images/enemy_mage.png' : 'assets/images/warrior_avatar.webp';
     enemyAv.style.backgroundImage = `url('${enemyImgUrl}')`;
   }
 
