@@ -1280,7 +1280,7 @@ background: linear-gradient(90deg, #7f1d1d, #ef4444);
 
 .assassinate-ready-container {
   filter: drop-shadow(0 0 8px #a78bfa) drop-shadow(0 0 4px #7c3aed);
-  transition: filter 0.3s ease;
+  transform-origin: center;
 }
 
 .assassinate-ready {
@@ -1289,11 +1289,12 @@ background: linear-gradient(90deg, #7f1d1d, #ef4444);
 
 @keyframes assassinate-pulse {
   from {
-    filter: drop-shadow(0 0 8px #a78bfa) !important;
+    filter: drop-shadow(0 0 8px #a78bfa);
+    transform: scale(1);
   }
-
   to {
-    filter: drop-shadow(0 0 24px #7c3aed) !important;
+    filter: drop-shadow(0 0 24px #7c3aed);
+    transform: scale(1.03);
   }
 }
 

@@ -218,15 +218,14 @@ class Berserker extends Mutation {
   }
 }
 
-// --- LEGENDARY: INT ---
 class RealityFracture extends Mutation {
   constructor() {
     super(
       'Reality Fracture',
       'Legendary',
-      'A portion of your damage fractures reality, ignoring Dodge and damage reduction. Half of the fractured damage pierces Energy Shield. Fractured damage scales with INT.'
+      'A portion of your damage fractures reality, ignoring Dodge and damage reduction. Half of the fractured damage pierces Energy Shield.'
     );
-    this.scaling = { int: 1.0 };
+    this.scaling = { int: 1.0, str: 1.0, agi: 1.0 };
     this.baseFraction = 0.40;
     this.maxFraction = 0.60;
   }
